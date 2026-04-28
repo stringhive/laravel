@@ -9,14 +9,14 @@ use Stringhive\Exceptions\ForbiddenException;
 use Stringhive\Exceptions\HiveNotFoundException;
 use Stringhive\Exceptions\StringLimitException;
 use Stringhive\Exceptions\ValidationException;
-use Stringhive\StringHive;
+use Stringhive\Stringhive;
 
 const BASE_URL = 'https://stringhive.test';
 const TOKEN = 'test-token';
 
-function makeClient(): StringHive
+function makeClient(): Stringhive
 {
-    return new StringHive(BASE_URL, TOKEN);
+    return new Stringhive(BASE_URL, TOKEN);
 }
 
 // ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ function makeClient(): StringHive
 
 it('returns locales', function () {
     Http::fake([
-        BASE_URL . '/api/locales' => Http::response([
+        BASE_URL.'/api/locales' => Http::response([
             'locales' => [
                 ['code' => 'en', 'name' => 'English', 'region' => 'US', 'rtl' => false, 'is_popular' => true],
                 ['code' => 'es', 'name' => 'Spanish', 'region' => 'ES', 'rtl' => false, 'is_popular' => true],
@@ -41,11 +41,11 @@ it('returns locales', function () {
 });
 
 it('sends bearer token with locales request', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['locales' => []])]);
+    Http::fake([BASE_URL.'/*' => Http::response(['locales' => []])]);
 
     makeClient()->locales();
 
-    Http::assertSent(fn (Request $r) => $r->hasHeader('Authorization', 'Bearer ' . TOKEN));
+    Http::assertSent(fn (Request $r) => $r->hasHeader('Authorization', 'Bearer '.TOKEN));
 });
 
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ it('sends bearer token with locales request', function () {
 
 it('returns hives', function () {
     Http::fake([
-        BASE_URL . '/api/hives' => Http::response([
+        BASE_URL.'/api/hives' => Http::response([
             'hives' => [
                 ['slug' => 'my-app', 'name' => 'My App', 'source_locale' => 'en', 'locales' => ['es'], 'string_count' => 10],
             ],
@@ -73,12 +73,12 @@ it('returns hives', function () {
 
 it('returns hive stats for a slug', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app' => Http::response([
-            'slug'          => 'my-app',
-            'name'          => 'My App',
+        BASE_URL.'/api/hives/my-app' => Http::response([
+            'slug' => 'my-app',
+            'name' => 'My App',
             'source_locale' => 'en',
-            'string_count'  => 100,
-            'locales'       => [
+            'string_count' => 100,
+            'locales' => [
                 'es' => ['translated' => 80, 'approved' => 60, 'warning' => 5, 'empty' => 15, 'translated_percent' => 85.0, 'approved_percent' => 60.0],
             ],
         ]),
@@ -96,7 +96,7 @@ it('returns hive stats for a slug', function () {
 
 it('returns paginated source strings', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/strings*' => Http::response([
+        BASE_URL.'/api/hives/my-app/strings*' => Http::response([
             'data' => [
                 ['key' => 'auth.email', 'source_value' => 'Email', 'file' => 'auth.php'],
             ],
@@ -112,7 +112,7 @@ it('returns paginated source strings', function () {
 });
 
 it('sends file filter query param', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['data' => [], 'meta' => ['total' => 0, 'per_page' => 100, 'current_page' => 1, 'last_page' => 1]])]);
+    Http::fake([BASE_URL.'/*' => Http::response(['data' => [], 'meta' => ['total' => 0, 'per_page' => 100, 'current_page' => 1, 'last_page' => 1]])]);
 
     makeClient()->strings('my-app', 'auth.php');
 
@@ -120,7 +120,7 @@ it('sends file filter query param', function () {
 });
 
 it('sends per_page and page query params', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['data' => [], 'meta' => ['total' => 0, 'per_page' => 50, 'current_page' => 2, 'last_page' => 2]])]);
+    Http::fake([BASE_URL.'/*' => Http::response(['data' => [], 'meta' => ['total' => 0, 'per_page' => 50, 'current_page' => 2, 'last_page' => 2]])]);
 
     makeClient()->strings('my-app', perPage: 50, page: 2);
 
@@ -133,7 +133,7 @@ it('sends per_page and page query params', function () {
 
 it('paginates through all pages and merges data', function () {
     Http::fake([
-        BASE_URL . '/*' => Http::sequence()
+        BASE_URL.'/*' => Http::sequence()
             ->push([
                 'data' => [['key' => 'a', 'source_value' => 'A', 'file' => 'app.php']],
                 'meta' => ['total' => 2, 'per_page' => 500, 'current_page' => 1, 'last_page' => 2],
@@ -153,7 +153,7 @@ it('paginates through all pages and merges data', function () {
 
 it('returns single page without extra requests', function () {
     Http::fake([
-        BASE_URL . '/*' => Http::response([
+        BASE_URL.'/*' => Http::response([
             'data' => [['key' => 'a', 'source_value' => 'A', 'file' => 'app.php']],
             'meta' => ['total' => 1, 'per_page' => 500, 'current_page' => 1, 'last_page' => 1],
         ]),
@@ -171,7 +171,7 @@ it('returns single page without extra requests', function () {
 
 it('posts source strings and returns import stats', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/strings' => Http::response([
+        BASE_URL.'/api/hives/my-app/strings' => Http::response([
             'created' => 45, 'updated' => 12, 'unchanged' => 1188, 'translations_cleared' => 5,
         ]),
     ]);
@@ -183,6 +183,7 @@ it('posts source strings and returns import stats', function () {
 
     Http::assertSent(function (Request $r) {
         $body = $r->data();
+
         return $r->method() === 'POST'
             && $body['conflict_strategy'] === 'keep'
             && isset($body['files']['app.php']);
@@ -190,7 +191,7 @@ it('posts source strings and returns import stats', function () {
 });
 
 it('passes conflict_strategy to import', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['created' => 0, 'updated' => 0, 'unchanged' => 0, 'translations_cleared' => 0])]);
+    Http::fake([BASE_URL.'/*' => Http::response(['created' => 0, 'updated' => 0, 'unchanged' => 0, 'translations_cleared' => 0])]);
 
     makeClient()->importStrings('my-app', [], 'clear');
 
@@ -203,7 +204,7 @@ it('passes conflict_strategy to import', function () {
 
 it('puts source strings and returns sync stats', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/strings' => Http::response([
+        BASE_URL.'/api/hives/my-app/strings' => Http::response([
             'created' => 10, 'updated' => 5, 'unchanged' => 100, 'deleted' => 3, 'translations_cleared' => 1,
         ]),
     ]);
@@ -221,7 +222,7 @@ it('puts source strings and returns sync stats', function () {
 
 it('posts translations and returns stats', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/translations/es' => Http::response([
+        BASE_URL.'/api/hives/my-app/translations/es' => Http::response([
             'created' => 120, 'updated' => 0, 'skipped' => 18, 'unknown' => 5,
         ]),
     ]);
@@ -233,13 +234,14 @@ it('posts translations and returns stats', function () {
 
     Http::assertSent(function (Request $r) {
         $body = $r->data();
+
         return str_contains($r->url(), '/translations/es')
             && $body['overwrite_strategy'] === 'skip';
     });
 });
 
 it('passes overwrite_strategy to translation import', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['created' => 0, 'updated' => 0, 'skipped' => 0, 'unknown' => 0])]);
+    Http::fake([BASE_URL.'/*' => Http::response(['created' => 0, 'updated' => 0, 'skipped' => 0, 'unknown' => 0])]);
 
     makeClient()->importTranslations('my-app', 'es', [], 'overwrite');
 
@@ -252,7 +254,7 @@ it('passes overwrite_strategy to translation import', function () {
 
 it('exports translations and returns files', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/export*' => Http::response([
+        BASE_URL.'/api/hives/my-app/export*' => Http::response([
             'files' => ['app.json' => '{"title":"Hola"}'],
         ]),
     ]);
@@ -267,7 +269,7 @@ it('exports translations and returns files', function () {
 
 it('exports all locales when locale param is omitted', function () {
     Http::fake([
-        BASE_URL . '/api/hives/my-app/export*' => Http::response([
+        BASE_URL.'/api/hives/my-app/export*' => Http::response([
             'files' => ['en.json' => '{}', 'es.json' => '{}'],
         ]),
     ]);
@@ -284,28 +286,28 @@ it('exports all locales when locale param is omitted', function () {
 // ---------------------------------------------------------------------------
 
 it('throws AuthenticationException on 401', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['message' => 'Unauthenticated.'], 401)]);
+    Http::fake([BASE_URL.'/*' => Http::response(['message' => 'Unauthenticated.'], 401)]);
 
     makeClient()->locales();
 })->throws(AuthenticationException::class, 'Unauthenticated.');
 
 it('throws ForbiddenException on 403', function () {
-    Http::fake([BASE_URL . '/*' => Http::response(['message' => 'Token does not have read permission.'], 403)]);
+    Http::fake([BASE_URL.'/*' => Http::response(['message' => 'Token does not have read permission.'], 403)]);
 
     makeClient()->hives();
 })->throws(ForbiddenException::class, 'Token does not have read permission.');
 
 it('throws HiveNotFoundException on 404 with slug', function () {
-    Http::fake([BASE_URL . '/*' => Http::response([], 404)]);
+    Http::fake([BASE_URL.'/*' => Http::response([], 404)]);
 
     makeClient()->hive('missing-app');
 })->throws(HiveNotFoundException::class, "Hive 'missing-app' not found.");
 
 it('throws ValidationException on 422', function () {
     Http::fake([
-        BASE_URL . '/*' => Http::response([
+        BASE_URL.'/*' => Http::response([
             'message' => 'The file field is required.',
-            'errors'  => ['file' => ['The file field is required.']],
+            'errors' => ['file' => ['The file field is required.']],
         ], 422),
     ]);
 
@@ -314,9 +316,9 @@ it('throws ValidationException on 422', function () {
 
 it('exposes errors array from ValidationException', function () {
     Http::fake([
-        BASE_URL . '/*' => Http::response([
+        BASE_URL.'/*' => Http::response([
             'message' => 'The file field is required.',
-            'errors'  => ['file' => ['The file field is required.']],
+            'errors' => ['file' => ['The file field is required.']],
         ], 422),
     ]);
 
@@ -329,14 +331,14 @@ it('exposes errors array from ValidationException', function () {
 
 it('throws StringLimitException when plan limit is reached', function () {
     Http::fake([
-        BASE_URL . '/*' => Http::response(['message' => 'String limit reached for your plan.'], 422),
+        BASE_URL.'/*' => Http::response(['message' => 'String limit reached for your plan.'], 422),
     ]);
 
     makeClient()->importStrings('my-app', ['app.php' => ['key' => 'value']]);
 })->throws(StringLimitException::class, 'String limit reached for your plan.');
 
 it('throws RuntimeException on unexpected status', function () {
-    Http::fake([BASE_URL . '/*' => Http::response([], 500)]);
+    Http::fake([BASE_URL.'/*' => Http::response([], 500)]);
 
     makeClient()->locales();
 })->throws(RuntimeException::class);

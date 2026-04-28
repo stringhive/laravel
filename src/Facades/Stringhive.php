@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Stringhive\Facades;
 
 use Illuminate\Support\Facades\Facade;
+use Stringhive\Lang\LangLoader;
 
 /**
  * @method static array locales()
@@ -16,13 +17,15 @@ use Illuminate\Support\Facades\Facade;
  * @method static array syncStrings(string $slug, array $files, string $conflictStrategy = 'keep')
  * @method static array importTranslations(string $slug, string $locale, array $files, string $overwriteStrategy = 'skip')
  * @method static array export(string $slug, string $format = 'json', ?string $locale = null)
+ * @method static array push(string $hive, ?string $langPath = null, ?string $sourceLocale = null, bool $sync = false, string $conflictStrategy = 'keep', ?LangLoader $loader = null)
+ * @method static array pull(string $hive, ?string $langPath = null, ?string $locale = null, string $format = 'php', bool $dryRun = false, ?LangLoader $loader = null)
  *
- * @see \Stringhive\StringHive
+ * @see \Stringhive\Stringhive
  */
-class StringHive extends Facade
+class Stringhive extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Stringhive\StringHive::class;
+        return \Stringhive\Stringhive::class;
     }
 }

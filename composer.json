@@ -5,10 +5,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
+        "illuminate/console": "^13.0",
         "illuminate/support": "^13.0"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.29",
         "orchestra/testbench": "^11.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0",
@@ -30,7 +32,7 @@
                 "Stringhive\\StringhiveServiceProvider"
             ],
             "aliases": {
-                "StringHive": "Stringhive\\Facades\\StringHive"
+                "Stringhive": "Stringhive\\Facades\\Stringhive"
             }
         }
     },
