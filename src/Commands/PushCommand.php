@@ -15,11 +15,12 @@ use Stringhive\Stringhive;
 class PushCommand extends Command
 {
     protected $signature = 'stringhive:push
-                            {hive              : Hive slug}
-                            {--sync            : Also delete strings absent from the import (per-file)}
+                            {hive                     : Hive slug}
+                            {--sync                   : Also delete strings absent from the import (per-file)}
                             {--conflict-strategy=keep : What to do with translations when source changes (keep|clear)}
-                            {--source-locale=  : Override source locale (defaults to config app.locale)}
-                            {--lang-path=      : Override the lang directory path}';
+                            {--with-translations      : Also push translation files for non-source locales}
+                            {--source-locale=         : Override source locale (defaults to config app.locale)}
+                            {--lang-path=             : Override the lang directory path}';
 
     protected $description = 'Push local translation files to StringHive';
 
@@ -28,6 +29,7 @@ class PushCommand extends Command
         $hive = (string) $this->argument('hive');
         $sync = (bool) $this->option('sync');
         $strategy = (string) ($this->option('conflict-strategy') ?? 'keep');
+        $withTranslations = (bool) $this->option('with-translations');
         $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
 
@@ -46,6 +48,7 @@ class PushCommand extends Command
                 sourceLocale: $sourceLocale,
                 sync: $sync,
                 conflictStrategy: $strategy,
+                withTranslations: $withTranslations,
             );
         } catch (AuthenticationException|ForbiddenException|HiveNotFoundException|StringLimitException|ValidationException $e) {
             $this->error($e->getMessage());

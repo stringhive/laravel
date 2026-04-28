@@ -53,12 +53,13 @@ This is the main event. Two commands that understand Laravel's translation file 
 php artisan stringhive:push <hive>
 ```
 
-Reads everything under `lang/` and uploads it. Source locale strings go in as source strings; everything else goes in as translations.
+Reads your source locale from `lang/` and pushes it to Stringhive as source strings. Translations are Stringhive's job — use `--with-translations` if you also want to seed them from local files.
 
 ```
 Options:
   --sync                  Also delete strings in the hive that aren't in your files (per-file)
   --conflict-strategy=    What to do with translations when a source string changes: keep (default) or clear
+  --with-translations     Also push translation files for non-source locales
   --source-locale=        Override the source locale (defaults to config app.locale)
   --lang-path=            Use a different lang directory
 ```
@@ -66,26 +67,24 @@ Options:
 Examples:
 
 ```bash
-# Basic push
+# Push source strings
 php artisan stringhive:push my-app
+
+# Push source strings and also seed all translations
+php artisan stringhive:push my-app --with-translations
 
 # Push and clean up stale strings
 php artisan stringhive:push my-app --sync
 
 # Wipe translations whenever a source string changes
 php artisan stringhive:push my-app --conflict-strategy=clear
-
-# Push from a non-standard path
-php artisan stringhive:push my-app --lang-path=/var/www/resources/lang
 ```
 
-The output tells you what happened per locale:
+The output tells you what happened:
 
 ```
 Pushing to hive: my-app
   source — created: 12  updated: 3  unchanged: 1230  cleared: 0
-  es — created: 8  updated: 1  skipped: 0  unknown: 0
-  fr — created: 8  updated: 1  skipped: 0  unknown: 0
 Done.
 ```
 
@@ -95,20 +94,22 @@ Done.
 php artisan stringhive:pull <hive>
 ```
 
-Exports translations from Stringhive and writes them to your `lang/` directory.
+Exports translated locales from Stringhive and writes them to your `lang/` directory. The source locale is skipped by default — you own that locally.
 
 ```
 Options:
-  --locale=       Pull a single locale only (omit to pull all locales)
-  --format=       Export format: php (default) or json
-  --dry-run       Preview what would be written without touching anything
-  --lang-path=    Use a different lang directory
+  --locale=          Pull a single locale only (omit to pull all locales)
+  --format=          Export format: php (default) or json
+  --dry-run          Preview what would be written without touching anything
+  --include-source   Also pull the source locale
+  --source-locale=   Override source locale (defaults to config app.locale)
+  --lang-path=       Use a different lang directory
 ```
 
 Examples:
 
 ```bash
-# Pull all locales as PHP files
+# Pull all translated locales (source excluded)
 php artisan stringhive:pull my-app
 
 # Pull just Spanish
@@ -116,6 +117,9 @@ php artisan stringhive:pull my-app --locale=es
 
 # Pull as JSON files
 php artisan stringhive:pull my-app --format=json
+
+# Pull everything, including the source locale
+php artisan stringhive:pull my-app --include-source
 
 # See what would happen before committing
 php artisan stringhive:pull my-app --dry-run
@@ -149,17 +153,16 @@ public function __construct(private \Stringhive\Stringhive $stringhive) {}
 ```php
 $result = Stringhive::push(
     hive: 'my-app',
-    langPath: null,           // defaults to lang_path()
-    sourceLocale: null,       // defaults to config('app.locale')
-    sync: false,              // delete strings absent from import
-    conflictStrategy: 'keep', // 'keep' or 'clear'
+    langPath: null,             // defaults to lang_path()
+    sourceLocale: null,         // defaults to config('app.locale')
+    sync: false,                // delete strings absent from import
+    conflictStrategy: 'keep',   // 'keep' or 'clear'
+    withTranslations: false,    // set true to also push translation locales
 );
 
 // [
 //   'source' => ['created' => 12, 'updated' => 3, 'unchanged' => 1230, 'translations_cleared' => 0],
-//   'translations' => [
-//     'es' => ['created' => 8, 'updated' => 1, 'skipped' => 0, 'unknown' => 0],
-//   ],
+//   'translations' => [], // populated when withTranslations: true
 // ]
 ```
 
@@ -168,10 +171,12 @@ $result = Stringhive::push(
 ```php
 $result = Stringhive::pull(
     hive: 'my-app',
-    langPath: null,    // defaults to lang_path()
-    locale: 'es',     // null pulls all locales
-    format: 'php',    // 'php' or 'json'
-    dryRun: false,    // true to preview without writing
+    langPath: null,         // defaults to lang_path()
+    locale: 'es',          // null pulls all non-source locales
+    format: 'php',         // 'php' or 'json'
+    dryRun: false,         // true to preview without writing
+    includeSource: false,  // set true to also pull the source locale
+    sourceLocale: null,    // defaults to config('app.locale')
 );
 
 // [

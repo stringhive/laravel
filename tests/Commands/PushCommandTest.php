@@ -46,6 +46,7 @@ it('pushes PHP translations for non-source locales', function () {
 
     $this->artisan('stringhive:push', [
         'hive' => 'my-app',
+        '--with-translations' => true,
         '--lang-path' => PHP_FIXTURES,
     ])->assertExitCode(0);
 
@@ -109,6 +110,7 @@ it('uses source locale as file key when pushing JSON translations', function () 
 
     $this->artisan('stringhive:push', [
         'hive' => 'my-app',
+        '--with-translations' => true,
         '--lang-path' => JSON_FIXTURES,
     ])->assertExitCode(0);
 

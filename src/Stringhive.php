@@ -121,6 +121,7 @@ class Stringhive
         ?string $sourceLocale = null,
         bool $sync = false,
         string $conflictStrategy = 'keep',
+        bool $withTranslations = false,
         ?LangLoader $loader = null,
     ): array {
         $langPath = $langPath ?? lang_path();
@@ -141,13 +142,15 @@ class Stringhive
                     ? $this->syncStrings($hive, $sourceFiles, $conflictStrategy)
                     : $this->importStrings($hive, $sourceFiles, $conflictStrategy);
 
-                foreach ($phpLocales as $locale) {
-                    if ($locale === $sourceLocale) {
-                        continue;
-                    }
-                    $files = $loader->readPhpLocale($langPath, $locale);
-                    if (! empty($files)) {
-                        $translationResults[$locale] = $this->importTranslations($hive, $locale, $files);
+                if ($withTranslations) {
+                    foreach ($phpLocales as $locale) {
+                        if ($locale === $sourceLocale) {
+                            continue;
+                        }
+                        $files = $loader->readPhpLocale($langPath, $locale);
+                        if (! empty($files)) {
+                            $translationResults[$locale] = $this->importTranslations($hive, $locale, $files);
+                        }
                     }
                 }
             }
@@ -162,13 +165,15 @@ class Stringhive
                     ? $this->syncStrings($hive, [$fileKey => $sourceData], $conflictStrategy)
                     : $this->importStrings($hive, [$fileKey => $sourceData], $conflictStrategy);
 
-                foreach ($jsonLocales as $locale) {
-                    if ($locale === $sourceLocale) {
-                        continue;
-                    }
-                    $data = $loader->readJsonLocale($langPath, $locale);
-                    if (! empty($data)) {
-                        $translationResults[$locale] = $this->importTranslations($hive, $locale, [$fileKey => $data]);
+                if ($withTranslations) {
+                    foreach ($jsonLocales as $locale) {
+                        if ($locale === $sourceLocale) {
+                            continue;
+                        }
+                        $data = $loader->readJsonLocale($langPath, $locale);
+                        if (! empty($data)) {
+                            $translationResults[$locale] = $this->importTranslations($hive, $locale, [$fileKey => $data]);
+                        }
                     }
                 }
             }
@@ -197,13 +202,29 @@ class Stringhive
         ?string $locale = null,
         string $format = 'php',
         bool $dryRun = false,
+        bool $includeSource = false,
+        ?string $sourceLocale = null,
         ?LangLoader $loader = null,
     ): array {
         $langPath = $langPath ?? lang_path();
         $loader = $loader ?? new LangLoader;
+        $sourceLocale = $sourceLocale ?? (string) config('app.locale', 'en');
+
+        if (! $includeSource && $locale !== null && $locale === $sourceLocale) {
+            return ['files' => [], 'paths' => [], 'written' => false];
+        }
 
         $export = $this->export($hive, $format, $locale);
         $files = $export['files'] ?? [];
+
+        if (! $includeSource && $locale === null) {
+            $files = array_filter(
+                $files,
+                fn (string $filename) => ! str_starts_with($filename, $sourceLocale.'.')
+                    && ! str_starts_with($filename, $sourceLocale.'/'),
+                ARRAY_FILTER_USE_KEY,
+            );
+        }
 
         $paths = [];
         if ($locale !== null) {

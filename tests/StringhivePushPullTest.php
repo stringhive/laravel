@@ -45,7 +45,7 @@ it('push() imports PHP translations for every non-source locale', function () {
         ->push(['created' => 1, 'updated' => 0, 'skipped' => 0, 'unknown' => 0]),
     ]);
 
-    $result = client()->push('my-hive', langPath: phpLang());
+    $result = client()->push('my-hive', langPath: phpLang(), withTranslations: true);
 
     expect($result['translations'])->toHaveKey('es');
 
@@ -103,7 +103,7 @@ it('push() uses source locale filename as JSON file key for translations', funct
         ->push(['created' => 2, 'updated' => 0, 'skipped' => 0, 'unknown' => 0]),
     ]);
 
-    client()->push('my-hive', langPath: jsonLang());
+    client()->push('my-hive', langPath: jsonLang(), withTranslations: true);
 
     Http::assertSent(fn (Request $r) => str_contains($r->url(), '/translations/es') &&
         isset($r->data()['files']['en.json'])

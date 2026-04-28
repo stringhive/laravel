@@ -14,11 +14,13 @@ use Stringhive\Stringhive;
 class PullCommand extends Command
 {
     protected $signature = 'stringhive:pull
-                            {hive         : Hive slug}
-                            {--locale=    : Pull a specific locale only (omit to pull all locales)}
-                            {--format=php : Export format (php|json)}
-                            {--dry-run    : Preview what would be written without touching any files}
-                            {--lang-path= : Override the lang directory path}';
+                            {hive              : Hive slug}
+                            {--locale=         : Pull a specific locale only (omit to pull all locales)}
+                            {--format=php      : Export format (php|json)}
+                            {--dry-run         : Preview what would be written without touching any files}
+                            {--include-source  : Also pull the source locale}
+                            {--source-locale=  : Override source locale (defaults to config app.locale)}
+                            {--lang-path=      : Override the lang directory path}';
 
     protected $description = 'Pull translations from StringHive into local lang files';
 
@@ -28,6 +30,8 @@ class PullCommand extends Command
         $locale = $this->option('locale') !== null ? (string) $this->option('locale') : null;
         $format = (string) ($this->option('format') ?? 'php');
         $dryRun = (bool) $this->option('dry-run');
+        $includeSource = (bool) $this->option('include-source');
+        $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
         $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
 
         if (! in_array($format, ['php', 'json'], true)) {
@@ -50,6 +54,8 @@ class PullCommand extends Command
                 locale: $locale,
                 format: $format,
                 dryRun: $dryRun,
+                includeSource: $includeSource,
+                sourceLocale: $sourceLocale,
             );
         } catch (AuthenticationException|ForbiddenException|HiveNotFoundException|ValidationException $e) {
             $this->error($e->getMessage());
