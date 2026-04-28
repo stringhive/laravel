@@ -28,7 +28,10 @@
         "laravel": {
             "providers": [
                 "Stringhive\\StringhiveServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "StringHive": "Stringhive\\Facades\\StringHive"
+            }
         }
     },
     "config": {
