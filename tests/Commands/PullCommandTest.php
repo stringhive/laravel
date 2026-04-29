@@ -279,6 +279,41 @@ it('--lang-path option takes precedence over config lang_path during pull', func
 });
 
 // ---------------------------------------------------------------------------
+// Format auto-detection
+// ---------------------------------------------------------------------------
+
+it('auto-detects json format when lang path contains json files', function () {
+    $dir = makeTempLangDir();
+    file_put_contents($dir.'/de.json', '{"Hello":"Hallo"}');
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), 'format=json'));
+
+    removeTempDir($dir);
+});
+
+it('defaults to php format when lang path has no json files', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), 'format=php'));
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
