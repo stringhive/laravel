@@ -176,3 +176,26 @@ it('returns failure when hive is not found', function () {
 
     removeTempDir($dir);
 });
+
+it('uses hive from config when no argument is given', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.hive' => 'config-hive']);
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), '/api/hives/config-hive/export'));
+
+    removeTempDir($dir);
+});
+
+it('fails when no hive argument and no config hive', function () {
+    config(['stringhive.hive' => null]);
+
+    $this->artisan('stringhive:pull')->assertExitCode(1);
+
+    Http::assertNothingSent();
+});

@@ -149,3 +149,24 @@ it('returns failure when string limit is reached', function () {
         '--lang-path' => PHP_FIXTURES,
     ])->assertExitCode(1);
 });
+
+it('uses hive from config when no argument is given', function () {
+    config(['stringhive.hive' => 'config-hive']);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), '/api/hives/config-hive/strings'));
+});
+
+it('fails when no hive argument and no config hive', function () {
+    config(['stringhive.hive' => null]);
+
+    $this->artisan('stringhive:push', [
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(1);
+
+    Http::assertNothingSent();
+});

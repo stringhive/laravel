@@ -15,7 +15,7 @@ use Stringhive\Stringhive;
 class PushCommand extends Command
 {
     protected $signature = 'stringhive:push
-                            {hive                     : Hive slug}
+                            {hive?                    : Hive slug (overrides config stringhive.hive)}
                             {--sync                   : Also delete strings absent from the import (per-file)}
                             {--conflict-strategy=keep : What to do with translations when source changes (keep|clear)}
                             {--with-translations      : Also push translation files for non-source locales}
@@ -26,7 +26,15 @@ class PushCommand extends Command
 
     public function handle(Stringhive $client): int
     {
-        $hive = (string) $this->argument('hive');
+        $hive = $this->argument('hive') ?? config('stringhive.hive');
+
+        if (! $hive) {
+            $this->error('No hive specified. Pass a hive argument or set stringhive.hive in your config (STRINGHIVE_HIVE).');
+
+            return self::FAILURE;
+        }
+
+        $hive = (string) $hive;
         $sync = (bool) $this->option('sync');
         $strategy = (string) ($this->option('conflict-strategy') ?? 'keep');
         $withTranslations = (bool) $this->option('with-translations');
