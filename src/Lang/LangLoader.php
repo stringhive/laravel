@@ -51,10 +51,12 @@ class LangLoader
     /**
      * Read PHP translation files for one locale.
      * Skips files that don't return an array (guards against bad files).
+     * Skips any filename that matches an entry in $exclude (fnmatch patterns).
      *
+     * @param  array<int, string>  $exclude  glob patterns to skip (e.g. ['auth.php'])
      * @return array<string, array<mixed>> filename => nested array
      */
-    public function readPhpLocale(string $langPath, string $locale): array
+    public function readPhpLocale(string $langPath, string $locale, array $exclude = []): array
     {
         $dir = $langPath.'/'.$locale;
         if (! is_dir($dir)) {
@@ -63,13 +65,33 @@ class LangLoader
 
         $files = [];
         foreach (glob($dir.'/*.php') ?: [] as $path) {
+            $filename = basename($path);
+            if ($this->isExcluded($filename, $exclude)) {
+                continue;
+            }
             $data = include $path;
             if (is_array($data)) {
-                $files[basename($path)] = $data;
+                $files[$filename] = $data;
             }
         }
 
         return $files;
+    }
+
+    /**
+     * Return true if $filename matches any of the given fnmatch patterns.
+     *
+     * @param  array<int, string>  $patterns
+     */
+    public function isExcluded(string $filename, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (fnmatch($pattern, $filename)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

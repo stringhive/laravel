@@ -120,6 +120,38 @@ it('uses source locale as file key when pushing JSON translations', function () 
 });
 
 // ---------------------------------------------------------------------------
+// Exclude
+// ---------------------------------------------------------------------------
+
+it('skips files matching --exclude patterns', function () {
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        ! isset($r->data()['files']['auth.php'])
+    );
+});
+
+it('merges config exclude with --exclude option', function () {
+    // config excludes app.php, CLI excludes auth.php — both files excluded → nothing pushed
+    config(['stringhive.exclude' => ['app.php']]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    Http::assertNothingSent();
+});
+
+// ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
 

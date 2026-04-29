@@ -20,7 +20,8 @@ class PullCommand extends Command
                             {--dry-run         : Preview what would be written without touching any files}
                             {--include-source  : Also pull the source locale}
                             {--source-locale=  : Override source locale (defaults to config app.locale)}
-                            {--lang-path=      : Override the lang directory path}';
+                            {--lang-path=      : Override the lang directory path}
+                            {--exclude=*       : Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)}';
 
     protected $description = 'Pull translations from StringHive into local lang files';
 
@@ -41,6 +42,7 @@ class PullCommand extends Command
         $includeSource = (bool) $this->option('include-source');
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
         $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
+        $exclude = array_merge((array) config('stringhive.exclude', []), (array) $this->option('exclude'));
 
         if (! in_array($format, ['php', 'json'], true)) {
             $this->error("Invalid format '{$format}'. Use 'php' or 'json'.");
@@ -64,6 +66,7 @@ class PullCommand extends Command
                 dryRun: $dryRun,
                 includeSource: $includeSource,
                 sourceLocale: $sourceLocale,
+                exclude: $exclude,
             );
         } catch (AuthenticationException|ForbiddenException|HiveNotFoundException|ValidationException $e) {
             $this->error($e->getMessage());
