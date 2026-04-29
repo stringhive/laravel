@@ -31,15 +31,29 @@ php artisan vendor:publish --tag=stringhive-config
 
 ## Configuration
 
-One line in your `.env` and you're done:
+Add your credentials to `.env`:
 
 ```env
 STRINGHIVE_TOKEN=your-api-token
+STRINGHIVE_HIVE=my-app        # optional default hive slug
 ```
 
 The service provider auto-registers. The facade is ready. Off you go.
 
 > `STRINGHIVE_URL` defaults to `https://www.stringhive.com`. Only set it if you're running a custom server.
+
+### Excluding files
+
+Some files are better left unmanaged by Stringhive (e.g. `auth.php` if you maintain it locally). Add glob patterns to `config/stringhive.php` and they'll be skipped on every push and pull:
+
+```php
+'exclude' => [
+    'auth.php',
+    'passwords.php',
+],
+```
+
+You can also pass patterns at the command line with `--exclude` (can be repeated). CLI patterns are merged with the config list, so you can combine both freely.
 
 ---
 
@@ -50,10 +64,12 @@ This is the main event. Two commands that understand Laravel's translation file 
 ### Push: local files to Stringhive
 
 ```bash
-php artisan stringhive:push <hive>
+php artisan stringhive:push [<hive>]
 ```
 
 Reads your source locale from `lang/` and pushes it to Stringhive as source strings. Translations are Stringhive's job — use `--with-translations` if you also want to seed them from local files.
+
+The hive argument is optional if `STRINGHIVE_HIVE` is set in your `.env` (or `stringhive.hive` in config).
 
 ```
 Options:
@@ -62,6 +78,7 @@ Options:
   --with-translations     Also push translation files for non-source locales
   --source-locale=        Override the source locale (defaults to config app.locale)
   --lang-path=            Use a different lang directory
+  --exclude=              Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)
 ```
 
 Examples:
@@ -78,6 +95,9 @@ php artisan stringhive:push my-app --sync
 
 # Wipe translations whenever a source string changes
 php artisan stringhive:push my-app --conflict-strategy=clear
+
+# Skip specific files
+php artisan stringhive:push my-app --exclude=auth.php --exclude=passwords.php
 ```
 
 The output tells you what happened:
@@ -91,10 +111,12 @@ Done.
 ### Pull: Stringhive to local files
 
 ```bash
-php artisan stringhive:pull <hive>
+php artisan stringhive:pull [<hive>]
 ```
 
 Exports translated locales from Stringhive and writes them to your `lang/` directory. The source locale is skipped by default — you own that locally.
+
+The hive argument is optional if `STRINGHIVE_HIVE` is set in your `.env` (or `stringhive.hive` in config).
 
 ```
 Options:
@@ -104,6 +126,7 @@ Options:
   --include-source   Also pull the source locale
   --source-locale=   Override source locale (defaults to config app.locale)
   --lang-path=       Use a different lang directory
+  --exclude=         Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)
 ```
 
 Examples:
@@ -123,6 +146,9 @@ php artisan stringhive:pull my-app --include-source
 
 # See what would happen before committing
 php artisan stringhive:pull my-app --dry-run
+
+# Skip files you manage locally
+php artisan stringhive:pull my-app --exclude=auth.php --exclude=passwords.php
 ```
 
 Dry-run output:
@@ -158,6 +184,7 @@ $result = Stringhive::push(
     sync: false,                // delete strings absent from import
     conflictStrategy: 'keep',   // 'keep' or 'clear'
     withTranslations: false,    // set true to also push translation locales
+    exclude: ['auth.php'],      // filenames/glob patterns to skip
 );
 
 // [
@@ -171,12 +198,13 @@ $result = Stringhive::push(
 ```php
 $result = Stringhive::pull(
     hive: 'my-app',
-    langPath: null,         // defaults to lang_path()
-    locale: 'es',          // null pulls all non-source locales
-    format: 'php',         // 'php' or 'json'
-    dryRun: false,         // true to preview without writing
-    includeSource: false,  // set true to also pull the source locale
-    sourceLocale: null,    // defaults to config('app.locale')
+    langPath: null,             // defaults to lang_path()
+    locale: 'es',              // null pulls all non-source locales
+    format: 'php',             // 'php' or 'json'
+    dryRun: false,             // true to preview without writing
+    includeSource: false,      // set true to also pull the source locale
+    sourceLocale: null,        // defaults to config('app.locale')
+    exclude: ['auth.php'],     // filenames/glob patterns to skip
 );
 
 // [
