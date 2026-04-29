@@ -14,7 +14,7 @@ use Stringhive\Stringhive;
 class PullCommand extends Command
 {
     protected $signature = 'stringhive:pull
-                            {hive              : Hive slug}
+                            {hive?             : Hive slug (overrides config stringhive.hive)}
                             {--locale=         : Pull a specific locale only (omit to pull all locales)}
                             {--format=php      : Export format (php|json)}
                             {--dry-run         : Preview what would be written without touching any files}
@@ -26,7 +26,15 @@ class PullCommand extends Command
 
     public function handle(Stringhive $client): int
     {
-        $hive = (string) $this->argument('hive');
+        $hive = $this->argument('hive') ?? config('stringhive.hive');
+
+        if (! $hive) {
+            $this->error('No hive specified. Pass a hive argument or set stringhive.hive in your config (STRINGHIVE_HIVE).');
+
+            return self::FAILURE;
+        }
+
+        $hive = (string) $hive;
         $locale = $this->option('locale') !== null ? (string) $this->option('locale') : null;
         $format = (string) ($this->option('format') ?? 'php');
         $dryRun = (bool) $this->option('dry-run');
