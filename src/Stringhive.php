@@ -211,7 +211,7 @@ class Stringhive
         string $hive,
         ?string $langPath = null,
         ?string $locale = null,
-        string $format = 'php',
+        ?string $format = null,
         bool $dryRun = false,
         bool $includeSource = false,
         ?string $sourceLocale = null,
@@ -222,6 +222,10 @@ class Stringhive
         $langPath = $langPath ?? lang_path();
         $loader = $loader ?? new LangLoader;
         $sourceLocale = $sourceLocale ?? (string) config('app.locale', 'en');
+
+        if ($format === null) {
+            $format = ! empty($loader->jsonLocales($langPath)) ? 'json' : 'php';
+        }
 
         if (! $includeSource && $locale !== null && $locale === $sourceLocale) {
             return ['files' => [], 'paths' => [], 'written' => false];
