@@ -120,11 +120,44 @@ it('push() accepts an injected LangLoader for testing', function () {
     $loader = Mockery::mock(LangLoader::class);
     $loader->allows('phpLocales')->andReturn(['en']);
     $loader->allows('jsonLocales')->andReturn([]);
-    $loader->allows('readPhpLocale')->with(Mockery::any(), 'en', Mockery::any())->andReturn(['app.php' => ['key' => 'val']]);
+    $loader->allows('readPhpLocale')->with(Mockery::any(), 'en', Mockery::any(), Mockery::any())->andReturn(['app.php' => ['key' => 'val']]);
 
     $result = client()->push('my-hive', langPath: '/fake', loader: $loader);
 
     expect($result['source'])->not->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// push() — include
+// ---------------------------------------------------------------------------
+
+it('push() only pushes PHP files matching include patterns', function () {
+    Http::fake(['*' => Http::response(['created' => 1, 'updated' => 0, 'unchanged' => 0, 'translations_cleared' => 0])]);
+
+    client()->push('my-hive', langPath: phpLang(), include: ['app.php']);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        ! isset($r->data()['files']['auth.php'])
+    );
+});
+
+it('push() skips JSON source locale when include does not match it', function () {
+    Http::fake(['*' => Http::response([])]);
+
+    $result = client()->push('my-hive', langPath: jsonLang(), include: ['*.php']);
+
+    expect($result['source'])->toBeNull();
+    Http::assertNothingSent();
+});
+
+it('push() include and exclude work together', function () {
+    Http::fake(['*' => Http::response([])]);
+
+    // include all PHP files but also exclude app.php → nothing pushed
+    $result = client()->push('my-hive', langPath: phpLang(), include: ['*.php'], exclude: ['app.php', 'auth.php']);
+
+    expect($result['source'])->toBeNull();
+    Http::assertNothingSent();
 });
 
 // ---------------------------------------------------------------------------
@@ -202,6 +235,69 @@ it('pull() writes root files when no locale is specified', function () {
     expect($result['written'])->toBeTrue()
         ->and($result['paths'])->toContain($dir.'/es.json')
         ->and(file_exists($dir.'/es.json'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
+// pull() — include
+// ---------------------------------------------------------------------------
+
+it('pull() only writes files matching include patterns', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['key'=>'val'];",
+            'auth.php' => "<?php\n\nreturn ['login'=>'Login'];",
+        ],
+    ])]);
+
+    $result = client()->pull('my-hive', langPath: $dir, locale: 'es', include: ['app.php']);
+
+    expect($result['paths'])->toHaveCount(1)
+        ->and($result['paths'][0])->toContain('app.php')
+        ->and(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeFalse();
+
+    removeTempDir($dir);
+});
+
+it('pull() include and exclude work together', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['key'=>'val'];",
+            'auth.php' => "<?php\n\nreturn ['login'=>'Login'];",
+            'passwords.php' => "<?php\n\nreturn ['reset'=>'Reset'];",
+        ],
+    ])]);
+
+    // include all PHP, but exclude auth.php → only app.php and passwords.php
+    $result = client()->pull('my-hive', langPath: $dir, locale: 'es', include: ['*.php'], exclude: ['auth.php']);
+
+    expect($result['paths'])->toHaveCount(2)
+        ->and(collect($result['paths'])->every(fn ($p) => ! str_contains($p, 'auth.php')))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+it('pull() include filters basenames in all-locale export', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'es/app.php' => "<?php\n\nreturn ['key'=>'val'];",
+            'es/auth.php' => "<?php\n\nreturn ['login'=>'Login'];",
+            'fr/app.php' => "<?php\n\nreturn ['key'=>'val'];",
+        ],
+    ])]);
+
+    $result = client()->pull('my-hive', langPath: $dir, include: ['app.php'], dryRun: true);
+
+    expect($result['paths'])->toHaveCount(2)
+        ->and(collect($result['paths'])->every(fn ($p) => str_contains($p, 'app.php')))->toBeTrue();
 
     removeTempDir($dir);
 });

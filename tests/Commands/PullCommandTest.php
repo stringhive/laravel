@@ -135,6 +135,58 @@ it('outputs dry-run paths without writing', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Include
+// ---------------------------------------------------------------------------
+
+it('only pulls files matching --include patterns', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--include' => ['app.php'],
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeFalse();
+
+    removeTempDir($dir);
+});
+
+it('merges config include with --include option during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.include' => ['app.php']]);
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--include' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    // config includes app.php, CLI includes auth.php → both are written
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
 // Exclude
 // ---------------------------------------------------------------------------
 
