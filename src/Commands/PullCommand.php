@@ -42,7 +42,7 @@ class PullCommand extends Command
         $dryRun = (bool) $this->option('dry-run');
         $includeSource = (bool) $this->option('include-source');
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
-        $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
+        $langPath = (string) ($this->option('lang-path') ?? config('stringhive.lang_path')) ?: null;
         $exclude = array_merge((array) config('stringhive.exclude', []), (array) $this->option('exclude'));
         $include = array_merge((array) config('stringhive.include', []), (array) $this->option('include'));
 

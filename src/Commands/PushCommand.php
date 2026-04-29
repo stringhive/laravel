@@ -40,7 +40,7 @@ class PushCommand extends Command
         $sync = (bool) $this->option('sync');
         $strategy = (string) ($this->option('conflict-strategy') ?? 'keep');
         $withTranslations = (bool) $this->option('with-translations');
-        $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
+        $langPath = (string) ($this->option('lang-path') ?? config('stringhive.lang_path')) ?: null;
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
         $exclude = array_merge((array) config('stringhive.exclude', []), (array) $this->option('exclude'));
         $include = array_merge((array) config('stringhive.include', []), (array) $this->option('include'));

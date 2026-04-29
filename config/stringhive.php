@@ -7,6 +7,7 @@ return [
     'token' => env('STRINGHIVE_TOKEN'),
     'hive' => env('STRINGHIVE_HIVE'),
     'timeout' => 30,
+    'lang_path' => env('STRINGHIVE_LANG_PATH'),
 
     /*
     |--------------------------------------------------------------------------
