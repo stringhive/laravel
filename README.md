@@ -149,7 +149,7 @@ The hive argument is optional if `STRINGHIVE_HIVE` is set in your `.env` (or `st
 ```
 Options:
   --locale=          Pull a single locale only (omit to pull all locales)
-  --format=          Export format: php (default) or json
+  --format=          Export format: php or json (auto-detected from existing files if omitted)
   --dry-run          Preview what would be written without touching anything
   --include-source   Also pull the source locale
   --source-locale=   Override source locale (defaults to config app.locale)
@@ -233,7 +233,7 @@ $result = Stringhive::pull(
     hive: 'my-app',
     langPath: null,             // defaults to lang_path()
     locale: 'es',              // null pulls all non-source locales
-    format: 'php',             // 'php' or 'json'
+    format: null,              // 'php' or 'json'; null auto-detects from existing files in langPath
     dryRun: false,             // true to preview without writing
     includeSource: false,      // set true to also pull the source locale
     sourceLocale: null,        // defaults to config('app.locale')
