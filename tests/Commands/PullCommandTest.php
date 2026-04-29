@@ -238,6 +238,47 @@ it('merges config exclude with --exclude option during pull', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Lang path config
+// ---------------------------------------------------------------------------
+
+it('uses lang_path from config when no --lang-path option is given during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.lang_path' => $dir]);
+
+    Http::fake(['*' => Http::response([
+        'files' => ['app.php' => "<?php\n\nreturn ['title' => 'Hola'];"],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+it('--lang-path option takes precedence over config lang_path during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.lang_path' => '/wrong/path']);
+
+    Http::fake(['*' => Http::response([
+        'files' => ['app.php' => "<?php\n\nreturn ['title' => 'Hola'];"],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 

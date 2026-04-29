@@ -186,6 +186,33 @@ it('merges config exclude with --exclude option', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Lang path config
+// ---------------------------------------------------------------------------
+
+it('uses lang_path from config when no --lang-path option is given', function () {
+    config(['stringhive.lang_path' => PHP_FIXTURES]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']));
+});
+
+it('--lang-path option takes precedence over config lang_path', function () {
+    config(['stringhive.lang_path' => '/wrong/path']);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']));
+});
+
+// ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
 

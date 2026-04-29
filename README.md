@@ -35,12 +35,23 @@ Add your credentials to `.env`:
 
 ```env
 STRINGHIVE_TOKEN=your-api-token
-STRINGHIVE_HIVE=my-app        # optional default hive slug
+STRINGHIVE_HIVE=my-app                          # optional default hive slug
+STRINGHIVE_LANG_PATH=resources/lang/configurator  # optional custom lang directory
 ```
 
 The service provider auto-registers. The facade is ready. Off you go.
 
 > `STRINGHIVE_URL` defaults to `https://www.stringhive.com`. Only set it if you're running a custom server.
+
+### Custom lang directory
+
+By default, commands use Laravel's `lang_path()`. To point at a different directory — for example a package-scoped subfolder — set `lang_path` in `config/stringhive.php` or via the env var:
+
+```env
+STRINGHIVE_LANG_PATH=resources/lang/configurator
+```
+
+The `--lang-path` CLI option overrides the config value for a single run.
 
 ### Excluding files
 
