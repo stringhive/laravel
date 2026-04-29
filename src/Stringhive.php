@@ -124,6 +124,7 @@ class Stringhive
         bool $withTranslations = false,
         ?LangLoader $loader = null,
         array $exclude = [],
+        array $include = [],
     ): array {
         $langPath = $langPath ?? lang_path();
         $sourceLocale = $sourceLocale ?? (string) config('app.locale', 'en');
@@ -136,7 +137,7 @@ class Stringhive
         $translationResults = [];
 
         if (in_array($sourceLocale, $phpLocales, true)) {
-            $sourceFiles = $loader->readPhpLocale($langPath, $sourceLocale, $exclude);
+            $sourceFiles = $loader->readPhpLocale($langPath, $sourceLocale, $exclude, $include);
 
             if (! empty($sourceFiles)) {
                 $sourceResult = $sync
@@ -148,7 +149,7 @@ class Stringhive
                         if ($locale === $sourceLocale) {
                             continue;
                         }
-                        $files = $loader->readPhpLocale($langPath, $locale, $exclude);
+                        $files = $loader->readPhpLocale($langPath, $locale, $exclude, $include);
                         if (! empty($files)) {
                             $translationResults[$locale] = $this->importTranslations($hive, $locale, $files);
                         }
@@ -157,7 +158,10 @@ class Stringhive
             }
         }
 
-        if (in_array($sourceLocale, $jsonLocales, true) && ! $loader->isExcluded($sourceLocale.'.json', $exclude)) {
+        if (in_array($sourceLocale, $jsonLocales, true)
+            && $loader->isIncluded($sourceLocale.'.json', $include)
+            && ! $loader->isExcluded($sourceLocale.'.json', $exclude)
+        ) {
             $sourceData = $loader->readJsonLocale($langPath, $sourceLocale);
 
             if (! empty($sourceData)) {
@@ -169,6 +173,9 @@ class Stringhive
                 if ($withTranslations) {
                     foreach ($jsonLocales as $locale) {
                         if ($locale === $sourceLocale) {
+                            continue;
+                        }
+                        if (! $loader->isIncluded($locale.'.json', $include)) {
                             continue;
                         }
                         if ($loader->isExcluded($locale.'.json', $exclude)) {
@@ -210,6 +217,7 @@ class Stringhive
         ?string $sourceLocale = null,
         ?LangLoader $loader = null,
         array $exclude = [],
+        array $include = [],
     ): array {
         $langPath = $langPath ?? lang_path();
         $loader = $loader ?? new LangLoader;
@@ -227,6 +235,15 @@ class Stringhive
                 $files,
                 fn (string $filename) => ! str_starts_with($filename, $sourceLocale.'.')
                     && ! str_starts_with($filename, $sourceLocale.'/'),
+                ARRAY_FILTER_USE_KEY,
+            );
+        }
+
+        if (! empty($include)) {
+            $files = array_filter(
+                $files,
+                fn (string $filename) => $loader->isIncluded($filename, $include)
+                    || $loader->isIncluded(basename($filename), $include),
                 ARRAY_FILTER_USE_KEY,
             );
         }

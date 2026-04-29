@@ -120,6 +120,40 @@ it('uses source locale as file key when pushing JSON translations', function () 
 });
 
 // ---------------------------------------------------------------------------
+// Include
+// ---------------------------------------------------------------------------
+
+it('only pushes files matching --include patterns', function () {
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--include' => ['app.php'],
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        ! isset($r->data()['files']['auth.php'])
+    );
+});
+
+it('merges config include with --include option during push', function () {
+    config(['stringhive.include' => ['app.php']]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--include' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    // config includes app.php, CLI includes auth.php → both are pushed
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        isset($r->data()['files']['auth.php'])
+    );
+});
+
+// ---------------------------------------------------------------------------
 // Exclude
 // ---------------------------------------------------------------------------
 

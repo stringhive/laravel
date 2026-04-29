@@ -128,6 +128,42 @@ it('isExcluded supports fnmatch glob patterns', function () {
 });
 
 // ---------------------------------------------------------------------------
+// isIncluded()
+// ---------------------------------------------------------------------------
+
+it('isIncluded returns true for an exact match', function () {
+    expect((new LangLoader)->isIncluded('app.php', ['app.php']))->toBeTrue();
+});
+
+it('isIncluded returns false when no pattern matches', function () {
+    expect((new LangLoader)->isIncluded('auth.php', ['app.php', 'passwords.php']))->toBeFalse();
+});
+
+it('isIncluded returns true for empty patterns (no filter)', function () {
+    expect((new LangLoader)->isIncluded('auth.php', []))->toBeTrue();
+});
+
+it('isIncluded supports fnmatch glob patterns', function () {
+    expect((new LangLoader)->isIncluded('auth.php', ['*.php']))->toBeTrue();
+    expect((new LangLoader)->isIncluded('en.json', ['*.php']))->toBeFalse();
+});
+
+it('readPhpLocale filters by include patterns', function () {
+    $files = (new LangLoader)->readPhpLocale(phpFixtures(), 'en', include: ['app.php']);
+
+    expect($files)->toHaveKey('app.php')
+        ->and($files)->not->toHaveKey('auth.php');
+});
+
+it('readPhpLocale with include and exclude applied together', function () {
+    // include all PHP, exclude app.php → only auth.php survives
+    $files = (new LangLoader)->readPhpLocale(phpFixtures(), 'en', exclude: ['app.php'], include: ['*.php']);
+
+    expect($files)->toHaveKey('auth.php')
+        ->and($files)->not->toHaveKey('app.php');
+});
+
+// ---------------------------------------------------------------------------
 // readJsonLocale()
 // ---------------------------------------------------------------------------
 
