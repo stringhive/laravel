@@ -20,7 +20,8 @@ class PushCommand extends Command
                             {--conflict-strategy=keep : What to do with translations when source changes (keep|clear)}
                             {--with-translations      : Also push translation files for non-source locales}
                             {--source-locale=         : Override source locale (defaults to config app.locale)}
-                            {--lang-path=             : Override the lang directory path}';
+                            {--lang-path=             : Override the lang directory path}
+                            {--exclude=*              : Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)}';
 
     protected $description = 'Push local translation files to StringHive';
 
@@ -40,6 +41,7 @@ class PushCommand extends Command
         $withTranslations = (bool) $this->option('with-translations');
         $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
+        $exclude = array_merge((array) config('stringhive.exclude', []), (array) $this->option('exclude'));
 
         if ($langPath !== null && ! is_dir($langPath)) {
             $this->error("Lang path not found: {$langPath}");
@@ -57,6 +59,7 @@ class PushCommand extends Command
                 sync: $sync,
                 conflictStrategy: $strategy,
                 withTranslations: $withTranslations,
+                exclude: $exclude,
             );
         } catch (AuthenticationException|ForbiddenException|HiveNotFoundException|StringLimitException|ValidationException $e) {
             $this->error($e->getMessage());
