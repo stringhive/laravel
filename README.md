@@ -55,6 +55,19 @@ Some files are better left unmanaged by Stringhive (e.g. `auth.php` if you maint
 
 You can also pass patterns at the command line with `--exclude` (can be repeated). CLI patterns are merged with the config list, so you can combine both freely.
 
+### Including files
+
+When you only want to sync a specific subset of files, use `include`. When this list is non-empty, only files matching at least one pattern are processed — everything else is ignored:
+
+```php
+'include' => [
+    'app.php',
+    'validation.php',
+],
+```
+
+`--include` works the same way on the command line and is merged with the config list. `include` and `exclude` are applied together: a file must match an include pattern (if any) **and** must not match any exclude pattern.
+
 ---
 
 ## Artisan Commands
@@ -79,6 +92,7 @@ Options:
   --source-locale=        Override the source locale (defaults to config app.locale)
   --lang-path=            Use a different lang directory
   --exclude=              Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)
+  --include=              Glob pattern of files to allow (repeatable; merged with config stringhive.include; if set, only matching files are pushed)
 ```
 
 Examples:
@@ -98,6 +112,9 @@ php artisan stringhive:push my-app --conflict-strategy=clear
 
 # Skip specific files
 php artisan stringhive:push my-app --exclude=auth.php --exclude=passwords.php
+
+# Only push specific files
+php artisan stringhive:push my-app --include=app.php --include=validation.php
 ```
 
 The output tells you what happened:
@@ -127,6 +144,7 @@ Options:
   --source-locale=   Override source locale (defaults to config app.locale)
   --lang-path=       Use a different lang directory
   --exclude=         Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)
+  --include=         Glob pattern of files to allow (repeatable; merged with config stringhive.include; if set, only matching files are pulled)
 ```
 
 Examples:
@@ -149,6 +167,9 @@ php artisan stringhive:pull my-app --dry-run
 
 # Skip files you manage locally
 php artisan stringhive:pull my-app --exclude=auth.php --exclude=passwords.php
+
+# Only pull specific files
+php artisan stringhive:pull my-app --include=app.php --include=validation.php
 ```
 
 Dry-run output:
@@ -185,6 +206,7 @@ $result = Stringhive::push(
     conflictStrategy: 'keep',   // 'keep' or 'clear'
     withTranslations: false,    // set true to also push translation locales
     exclude: ['auth.php'],      // filenames/glob patterns to skip
+    include: ['app.php'],       // if non-empty, only matching files are pushed
 );
 
 // [
@@ -205,6 +227,7 @@ $result = Stringhive::pull(
     includeSource: false,      // set true to also pull the source locale
     sourceLocale: null,        // defaults to config('app.locale')
     exclude: ['auth.php'],     // filenames/glob patterns to skip
+    include: ['app.php'],      // if non-empty, only matching files are pulled
 );
 
 // [
