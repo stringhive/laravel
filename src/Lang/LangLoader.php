@@ -51,10 +51,14 @@ class LangLoader
     /**
      * Read PHP translation files for one locale.
      * Skips files that don't return an array (guards against bad files).
+     * Skips any filename that matches an entry in $exclude (fnmatch patterns).
+     * If $include is non-empty, only files matching a pattern in $include are considered.
      *
+     * @param  array<int, string>  $exclude  glob patterns to skip (e.g. ['auth.php'])
+     * @param  array<int, string>  $include  glob patterns to allow; empty means allow all
      * @return array<string, array<mixed>> filename => nested array
      */
-    public function readPhpLocale(string $langPath, string $locale): array
+    public function readPhpLocale(string $langPath, string $locale, array $exclude = [], array $include = []): array
     {
         $dir = $langPath.'/'.$locale;
         if (! is_dir($dir)) {
@@ -63,13 +67,56 @@ class LangLoader
 
         $files = [];
         foreach (glob($dir.'/*.php') ?: [] as $path) {
+            $filename = basename($path);
+            if (! $this->isIncluded($filename, $include)) {
+                continue;
+            }
+            if ($this->isExcluded($filename, $exclude)) {
+                continue;
+            }
             $data = include $path;
             if (is_array($data)) {
-                $files[basename($path)] = $data;
+                $files[$filename] = $data;
             }
         }
 
         return $files;
+    }
+
+    /**
+     * Return true if $filename matches any of the given fnmatch patterns.
+     *
+     * @param  array<int, string>  $patterns
+     */
+    public function isExcluded(string $filename, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (fnmatch($pattern, $filename)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Return true if $patterns is empty (no filter) or $filename matches any pattern.
+     *
+     * @param  array<int, string>  $patterns
+     */
+    public function isIncluded(string $filename, array $patterns): bool
+    {
+        if (empty($patterns)) {
+            return true;
+        }
+
+        foreach ($patterns as $pattern) {
+            if (fnmatch($pattern, $filename)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

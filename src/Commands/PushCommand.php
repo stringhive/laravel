@@ -15,23 +15,35 @@ use Stringhive\Stringhive;
 class PushCommand extends Command
 {
     protected $signature = 'stringhive:push
-                            {hive                     : Hive slug}
+                            {hive?                    : Hive slug (overrides config stringhive.hive)}
                             {--sync                   : Also delete strings absent from the import (per-file)}
                             {--conflict-strategy=keep : What to do with translations when source changes (keep|clear)}
                             {--with-translations      : Also push translation files for non-source locales}
                             {--source-locale=         : Override source locale (defaults to config app.locale)}
-                            {--lang-path=             : Override the lang directory path}';
+                            {--lang-path=             : Override the lang directory path}
+                            {--exclude=*              : Glob pattern of files to skip (repeatable; merged with config stringhive.exclude)}
+                            {--include=*              : Glob pattern of files to allow (repeatable; merged with config stringhive.include; if set, only matching files are pushed)}';
 
     protected $description = 'Push local translation files to StringHive';
 
     public function handle(Stringhive $client): int
     {
-        $hive = (string) $this->argument('hive');
+        $hive = $this->argument('hive') ?? config('stringhive.hive');
+
+        if (! $hive) {
+            $this->error('No hive specified. Pass a hive argument or set stringhive.hive in your config (STRINGHIVE_HIVE).');
+
+            return self::FAILURE;
+        }
+
+        $hive = (string) $hive;
         $sync = (bool) $this->option('sync');
         $strategy = (string) ($this->option('conflict-strategy') ?? 'keep');
         $withTranslations = (bool) $this->option('with-translations');
-        $langPath = $this->option('lang-path') ? (string) $this->option('lang-path') : null;
+        $langPath = (string) ($this->option('lang-path') ?? config('stringhive.lang_path')) ?: null;
         $sourceLocale = $this->option('source-locale') ? (string) $this->option('source-locale') : null;
+        $exclude = array_merge((array) config('stringhive.exclude', []), (array) $this->option('exclude'));
+        $include = array_merge((array) config('stringhive.include', []), (array) $this->option('include'));
 
         if ($langPath !== null && ! is_dir($langPath)) {
             $this->error("Lang path not found: {$langPath}");
@@ -49,6 +61,8 @@ class PushCommand extends Command
                 sync: $sync,
                 conflictStrategy: $strategy,
                 withTranslations: $withTranslations,
+                exclude: $exclude,
+                include: $include,
             );
         } catch (AuthenticationException|ForbiddenException|HiveNotFoundException|StringLimitException|ValidationException $e) {
             $this->error($e->getMessage());

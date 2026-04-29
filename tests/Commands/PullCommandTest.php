@@ -135,6 +135,185 @@ it('outputs dry-run paths without writing', function () {
 });
 
 // ---------------------------------------------------------------------------
+// Include
+// ---------------------------------------------------------------------------
+
+it('only pulls files matching --include patterns', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--include' => ['app.php'],
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeFalse();
+
+    removeTempDir($dir);
+});
+
+it('merges config include with --include option during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.include' => ['app.php']]);
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--include' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    // config includes app.php, CLI includes auth.php → both are written
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
+// Exclude
+// ---------------------------------------------------------------------------
+
+it('skips files matching --exclude patterns during pull', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeFalse();
+
+    removeTempDir($dir);
+});
+
+it('merges config exclude with --exclude option during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.exclude' => ['app.php']]);
+
+    Http::fake(['*' => Http::response([
+        'files' => [
+            'app.php' => "<?php\n\nreturn ['title' => 'Hola'];",
+            'auth.php' => "<?php\n\nreturn ['email' => 'Correo'];",
+        ],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeFalse()
+        ->and(file_exists($dir.'/es/auth.php'))->toBeFalse();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
+// Lang path config
+// ---------------------------------------------------------------------------
+
+it('uses lang_path from config when no --lang-path option is given during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.lang_path' => $dir]);
+
+    Http::fake(['*' => Http::response([
+        'files' => ['app.php' => "<?php\n\nreturn ['title' => 'Hola'];"],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+it('--lang-path option takes precedence over config lang_path during pull', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.lang_path' => '/wrong/path']);
+
+    Http::fake(['*' => Http::response([
+        'files' => ['app.php' => "<?php\n\nreturn ['title' => 'Hola'];"],
+    ])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--locale' => 'es',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    expect(file_exists($dir.'/es/app.php'))->toBeTrue();
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
+// Format auto-detection
+// ---------------------------------------------------------------------------
+
+it('auto-detects json format when lang path contains json files', function () {
+    $dir = makeTempLangDir();
+    file_put_contents($dir.'/de.json', '{"Hello":"Hallo"}');
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), 'format=json'));
+
+    removeTempDir($dir);
+});
+
+it('defaults to php format when lang path has no json files', function () {
+    $dir = makeTempLangDir();
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        'hive' => 'my-app',
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), 'format=php'));
+
+    removeTempDir($dir);
+});
+
+// ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
@@ -175,4 +354,27 @@ it('returns failure when hive is not found', function () {
     ])->assertExitCode(1);
 
     removeTempDir($dir);
+});
+
+it('uses hive from config when no argument is given', function () {
+    $dir = makeTempLangDir();
+    config(['stringhive.hive' => 'config-hive']);
+
+    Http::fake(['*' => Http::response(['files' => []])]);
+
+    $this->artisan('stringhive:pull', [
+        '--lang-path' => $dir,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), '/api/hives/config-hive/export'));
+
+    removeTempDir($dir);
+});
+
+it('fails when no hive argument and no config hive', function () {
+    config(['stringhive.hive' => null]);
+
+    $this->artisan('stringhive:pull')->assertExitCode(1);
+
+    Http::assertNothingSent();
 });

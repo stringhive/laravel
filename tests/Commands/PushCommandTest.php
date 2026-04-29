@@ -120,6 +120,99 @@ it('uses source locale as file key when pushing JSON translations', function () 
 });
 
 // ---------------------------------------------------------------------------
+// Include
+// ---------------------------------------------------------------------------
+
+it('only pushes files matching --include patterns', function () {
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--include' => ['app.php'],
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        ! isset($r->data()['files']['auth.php'])
+    );
+});
+
+it('merges config include with --include option during push', function () {
+    config(['stringhive.include' => ['app.php']]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--include' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    // config includes app.php, CLI includes auth.php → both are pushed
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        isset($r->data()['files']['auth.php'])
+    );
+});
+
+// ---------------------------------------------------------------------------
+// Exclude
+// ---------------------------------------------------------------------------
+
+it('skips files matching --exclude patterns', function () {
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']) &&
+        ! isset($r->data()['files']['auth.php'])
+    );
+});
+
+it('merges config exclude with --exclude option', function () {
+    // config excludes app.php, CLI excludes auth.php — both files excluded → nothing pushed
+    config(['stringhive.exclude' => ['app.php']]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+        '--exclude' => ['auth.php'],
+    ])->assertExitCode(0);
+
+    Http::assertNothingSent();
+});
+
+// ---------------------------------------------------------------------------
+// Lang path config
+// ---------------------------------------------------------------------------
+
+it('uses lang_path from config when no --lang-path option is given', function () {
+    config(['stringhive.lang_path' => PHP_FIXTURES]);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']));
+});
+
+it('--lang-path option takes precedence over config lang_path', function () {
+    config(['stringhive.lang_path' => '/wrong/path']);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        'hive' => 'my-app',
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn (Request $r) => isset($r->data()['files']['app.php']));
+});
+
+// ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
 
@@ -148,4 +241,25 @@ it('returns failure when string limit is reached', function () {
         'hive' => 'my-app',
         '--lang-path' => PHP_FIXTURES,
     ])->assertExitCode(1);
+});
+
+it('uses hive from config when no argument is given', function () {
+    config(['stringhive.hive' => 'config-hive']);
+    Http::fake(['*' => Http::response(importOk())]);
+
+    $this->artisan('stringhive:push', [
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(0);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), '/api/hives/config-hive/strings'));
+});
+
+it('fails when no hive argument and no config hive', function () {
+    config(['stringhive.hive' => null]);
+
+    $this->artisan('stringhive:push', [
+        '--lang-path' => PHP_FIXTURES,
+    ])->assertExitCode(1);
+
+    Http::assertNothingSent();
 });
