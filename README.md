@@ -1,6 +1,6 @@
 # Stringhive for Laravel
 
-The official Laravel package for [Stringhive](https://stringhive.com). Two Artisan commands to sync your translation files, a full API client if you want to go deeper, and zero boilerplate.
+The official Laravel package for [Stringhive](https://stringhive.com). Artisan commands to sync and audit your translation files, a full API client if you want to go deeper, and zero boilerplate.
 
 [![CI](https://github.com/stringhive/laravel/actions/workflows/ci.yml/badge.svg)](https://github.com/stringhive/laravel/actions/workflows/ci.yml)
 [![Latest Version](https://img.shields.io/packagist/v/stringhive/laravel)](https://packagist.org/packages/stringhive/laravel)
@@ -83,7 +83,7 @@ When you only want to sync a specific subset of files, use `include`. When this 
 
 ## Artisan Commands
 
-This is the main event. Two commands that understand Laravel's translation file structure (both PHP-style subdirectories and flat JSON files) and just do the right thing.
+Three commands that understand Laravel's translation file structure (both PHP-style subdirectories and flat JSON files) and just do the right thing.
 
 ### Push: local files to Stringhive
 
@@ -193,6 +193,101 @@ Pulling from hive: my-app
 Done.
 ```
 
+### Audit: find missing and orphaned keys
+
+```bash
+php artisan stringhive:audit [<hive>]
+```
+
+Fetches every key registered in the hive and regex-scans your codebase for static calls to `trans()`, `__()`, `trans_choice()`, `@lang()`, `Lang::get()`, and `Lang::choice()`. It then diffs the two sets:
+
+- **Missing** — keys found in code but absent from the hive
+- **Orphaned** — keys in the hive but never referenced in code
+
+`vendor/`, `node_modules/`, and `storage/` are excluded automatically. Dynamic keys (arguments containing `$` or `{`) are counted but skipped from the diff.
+
+The hive argument is optional if `STRINGHIVE_HIVE` is set in your `.env` (or `stringhive.hive` in config).
+
+```
+Options:
+  --format=          Output format: table (default), json, or github
+  --fail-on-missing  Exit 1 if any missing keys are found
+  --fail-on-orphaned Exit 1 if any orphaned keys are found
+```
+
+Examples:
+
+```bash
+# Audit with the default table output
+php artisan stringhive:audit my-app
+
+# Machine-readable JSON (useful in scripts)
+php artisan stringhive:audit my-app --format=json
+
+# GitHub Actions annotations (run in a CI step)
+php artisan stringhive:audit my-app --format=github
+
+# Fail CI if either list is non-empty
+php artisan stringhive:audit my-app --fail-on-missing --fail-on-orphaned
+```
+
+Default table output:
+
+```
+Auditing hive: my-app
+  API keys: 150
+  Scanned: 312 files — 147 unique static keys (4 dynamic skipped)
+
+ MISSING — 2 key(s) in code but not in the hive
++---------------------+------------------------------------+------+
+| Key                 | File                               | Line |
++---------------------+------------------------------------+------+
+| auth.session_expired| app/Http/Middleware/Authenticate.php| 34   |
+| emails.verify.title | app/Mail/VerifyEmail.php (+1)      | 18   |
++---------------------+------------------------------------+------+
+
+ ORPHANED — 3 key(s) in the hive but not in code
++------------------------------+-----------+
+| Key                          | API File  |
++------------------------------+-----------+
+| old.flash.success            | flash.php |
+| pagination.previous_disabled |           |
+| welcome.hero_subtitle        | home.php  |
++------------------------------+-----------+
+```
+
+JSON output shape:
+
+```json
+{
+  "hive": "my-app",
+  "summary": {
+    "api_total": 150,
+    "code_total": 147,
+    "files_scanned": 312,
+    "dynamic_skipped": 4,
+    "missing": 2,
+    "orphaned": 3
+  },
+  "missing": [
+    {
+      "key": "auth.session_expired",
+      "occurrences": [{ "file": "app/Http/Middleware/Authenticate.php", "line": 34 }]
+    }
+  ],
+  "orphaned": [
+    { "key": "old.flash.success", "file": "flash.php" }
+  ]
+}
+```
+
+GitHub format emits `::warning` annotations that appear inline in pull request diffs:
+
+```
+::warning file=app/Http/Middleware/Authenticate.php,line=34::StringHive: missing key "auth.session_expired"
+::warning ::StringHive: orphaned key "old.flash.success" (file: flash.php)
+```
+
 ---
 
 ## Programmatic Usage
@@ -277,6 +372,22 @@ Stats for one hive:
 ```php
 $hive = Stringhive::hive('my-app');
 // ['slug' => 'my-app', 'string_count' => 1245, 'locales' => ['es' => ['translated' => 1200, ...]]]
+```
+
+### Keys
+
+Fetch all keys registered in a hive (no pagination):
+
+```php
+$response = Stringhive::keys('my-app');
+// [
+//   'total' => 150,
+//   'keys'  => [
+//     ['key' => 'auth.login', 'file' => 'auth.php'],
+//     ['key' => 'validation.required', 'file' => 'validation.php'],
+//     ...
+//   ],
+// ]
 ```
 
 ### Source Strings

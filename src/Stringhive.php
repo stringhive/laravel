@@ -42,6 +42,11 @@ class Stringhive
         return $this->get("/api/hives/{$slug}")->json();
     }
 
+    public function keys(string $slug): array
+    {
+        return $this->get("/api/hives/{$slug}/keys")->json();
+    }
+
     public function strings(string $slug, ?string $file = null, int $perPage = 100, int $page = 1): array
     {
         $query = ['per_page' => $perPage, 'page' => $page];

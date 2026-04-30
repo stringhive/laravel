@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Stringhive;
 
 use Illuminate\Support\ServiceProvider;
+use Stringhive\Commands\AuditCommand;
 use Stringhive\Commands\PullCommand;
 use Stringhive\Commands\PushCommand;
 use Stringhive\Lang\LangLoader;
@@ -39,6 +40,7 @@ class StringhiveServiceProvider extends ServiceProvider
             $this->commands([
                 PushCommand::class,
                 PullCommand::class,
+                AuditCommand::class,
             ]);
         }
     }
