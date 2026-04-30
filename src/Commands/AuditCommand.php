@@ -20,6 +20,7 @@ class AuditCommand extends Command
     protected $signature = 'stringhive:audit
                             {hive?               : Hive slug (overrides config stringhive.hive)}
                             {--format=table      : Output format (table|json|github)}
+                            {--scan-path=        : Root directory to scan (defaults to project root)}
                             {--fail-on-missing   : Exit 1 if any keys are used in code but absent from the hive}
                             {--fail-on-orphaned  : Exit 1 if any hive keys are not referenced in code}';
 
@@ -67,7 +68,7 @@ class AuditCommand extends Command
             $this->line("  API keys: <info>{$apiTotal}</info>");
         }
 
-        $scan = $this->scanCode(base_path());
+        $scan = $this->scanCode((string) ($this->option('scan-path') ?: base_path()));
 
         /** @var array<string, list<array{file: string, line: int}>> $codeKeys */
         $codeKeys = $scan['keys'];
@@ -85,7 +86,22 @@ class AuditCommand extends Command
 
         $apiKeyMap = [];
         foreach ($apiKeyList as $entry) {
-            $apiKeyMap[$entry['key']] = $entry['file'] ?? null;
+            $key = $entry['key'];
+            $file = $entry['file'] ?? null;
+
+            // Laravel uses "path/to/file.key" notation in __() / trans() calls. Strip
+            // the extension from the full file path (not just the basename) so that
+            // "admin/sparky.php" → "admin/sparky" and both sides compare as
+            // "admin/sparky.key".
+            if ($file !== null) {
+                $ext = pathinfo($file, PATHINFO_EXTENSION);
+                $namespace = $ext !== '' ? substr($file, 0, -(strlen($ext) + 1)) : $file;
+                if ($namespace !== '' && ! str_starts_with($key, $namespace.'.')) {
+                    $key = $namespace.'.'.$key;
+                }
+            }
+
+            $apiKeyMap[$key] = $file;
         }
 
         $orphanedKeys = array_values(array_diff(array_keys($apiKeyMap), array_keys($codeKeys)));
