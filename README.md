@@ -411,6 +411,16 @@ $locales = array_map(
 
 $locales[0]->code;      // 'en'
 $locales[0]->isPopular; // true
+
+$strings = array_map(
+    fn ($s) => SourceStringResource::fromArray($s),
+    Stringhive::sourceStrings()
+);
+
+$strings[0]->key;         // 'auth.login'
+$strings[0]->sourceValue; // 'Log in'
+$strings[0]->isPlural;    // false
+$strings[0]->file;        // 'auth.php'
 ```
 
 ---
