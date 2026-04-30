@@ -9,6 +9,7 @@ readonly class SourceStringResource
     public function __construct(
         public string $key,
         public string $sourceValue,
+        public bool $isPlural,
         public string $file,
     ) {}
 
@@ -17,6 +18,7 @@ readonly class SourceStringResource
         return new self(
             key: $data['key'],
             sourceValue: $data['source_value'],
+            isPlural: (bool) ($data['is_plural'] ?? false),
             file: $data['file'],
         );
     }
