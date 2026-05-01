@@ -22,7 +22,10 @@ class AuditCommand extends Command
                             {--format=table      : Output format (table|json|github)}
                             {--scan-path=        : Root directory to scan (defaults to project root)}
                             {--fail-on-missing   : Exit 1 if any keys are used in code but absent from the hive}
-                            {--fail-on-orphaned  : Exit 1 if any hive keys are not referenced in code}';
+                            {--fail-on-orphaned  : Exit 1 if any hive keys are not referenced in code}
+                            {--fail-on-unapproved : Exit 1 if any locale has unapproved translations}
+                            {--locale=           : Comma-separated locale codes to scope the unapproved check (e.g. fr,de,es)}
+                            {--min-approved=     : Minimum approved % to pass (default 100, only applies with --fail-on-unapproved)}';
 
     protected $description = 'Diff hive keys against static translation calls in the codebase';
 
@@ -123,6 +126,58 @@ class AuditCommand extends Command
 
         if ($this->option('fail-on-orphaned') && ! empty($orphanedKeys)) {
             $exitCode = self::FAILURE;
+        }
+
+        if ($this->option('fail-on-unapproved')) {
+            try {
+                $hiveData = $client->hive($hive);
+            } catch (AuthenticationException|ForbiddenException|HiveNotFoundException $e) {
+                $this->error($e->getMessage());
+
+                return self::FAILURE;
+            }
+
+            $stats = $hiveData['stats'] ?? [];
+            $minApproved = (float) ($this->option('min-approved') ?? 100);
+
+            $localeFilter = null;
+            if ($this->option('locale')) {
+                $localeFilter = array_map('trim', explode(',', (string) $this->option('locale')));
+            }
+
+            $failing = [];
+
+            foreach ($stats as $locale => $localeStat) {
+                if ($localeFilter !== null && ! in_array($locale, $localeFilter, true)) {
+                    continue;
+                }
+
+                $approvedPercent = (float) ($localeStat['approved_percent'] ?? 0);
+
+                if ($approvedPercent < $minApproved) {
+                    $failing[$locale] = $approvedPercent;
+                }
+            }
+
+            if (! empty($failing)) {
+                if ($format !== 'json') {
+                    $this->newLine();
+                    $this->line(sprintf(
+                        '<error> UNAPPROVED — %d locale(s) below %g%% approval </error>',
+                        count($failing),
+                        $minApproved,
+                    ));
+                    $rows = [];
+
+                    foreach ($failing as $locale => $pct) {
+                        $rows[] = [$locale, number_format($pct, 1).'%'];
+                    }
+
+                    $this->table(['Locale', 'Approved %'], $rows);
+                }
+
+                $exitCode = self::FAILURE;
+            }
         }
 
         return $exitCode;

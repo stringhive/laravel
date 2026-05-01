@@ -156,3 +156,136 @@ it('handles keys that already include the namespace prefix', function () {
 
     removeTempDir($dir);
 });
+
+// ---------------------------------------------------------------------------
+// --fail-on-unapproved
+// ---------------------------------------------------------------------------
+
+function hiveResponse(array $stats): array
+{
+    return ['slug' => 'my-app', 'name' => 'My App', 'stats' => $stats];
+}
+
+it('exits 0 when all locales meet the default 100% approval threshold', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 100.0],
+            'de' => ['approved_percent' => 100.0],
+        ])),
+    ]);
+
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+    ])->assertExitCode(0);
+
+    removeTempDir($dir);
+});
+
+it('exits 1 when a locale is below 100% approval', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 80.0],
+            'de' => ['approved_percent' => 100.0],
+        ])),
+    ]);
+
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+    ])->assertExitCode(1);
+
+    removeTempDir($dir);
+});
+
+it('passes when locale is at exactly --min-approved threshold', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 95.0],
+        ])),
+    ]);
+
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+        '--min-approved' => '95',
+    ])->assertExitCode(0);
+
+    removeTempDir($dir);
+});
+
+it('fails when locale is below --min-approved threshold', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 94.9],
+        ])),
+    ]);
+
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+        '--min-approved' => '95',
+    ])->assertExitCode(1);
+
+    removeTempDir($dir);
+});
+
+it('scopes the unapproved check to --locale filter and ignores unlisted locales', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 50.0],
+            'de' => ['approved_percent' => 100.0],
+            'es' => ['approved_percent' => 100.0],
+        ])),
+    ]);
+
+    // Only checking de and es — fr (which would fail) is excluded
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+        '--locale' => 'de,es',
+    ])->assertExitCode(0);
+
+    removeTempDir($dir);
+});
+
+it('fails when a --locale-filtered locale is below threshold', function () {
+    $dir = makeScanDir(['page.php' => "<?php echo __('hello');"]);
+
+    Http::fake([
+        '*/keys*' => Http::response(auditResponse([])),
+        '*'       => Http::response(hiveResponse([
+            'fr' => ['approved_percent' => 80.0],
+            'de' => ['approved_percent' => 100.0],
+        ])),
+    ]);
+
+    $this->artisan('stringhive:audit', [
+        'hive' => 'my-app',
+        '--scan-path' => $dir,
+        '--fail-on-unapproved' => true,
+        '--locale' => 'fr,de',
+    ])->assertExitCode(1);
+
+    removeTempDir($dir);
+});
